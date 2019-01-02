@@ -11,5 +11,6 @@ Require-Bundle: org.eclipse.ui;bundle-version="3.107.0",
  org.csstudio.saverestore;bundle-version="1.1.0",
  org.csstudio.saverestore.ui;bundle-version="1.0.0",
  org.csstudio.ui.fx.util;bundle-version="1.0.0",
- org.csstudio.csdata;bundle-version="3.2.0"
+ org.csstudio.csdata;bundle-version="3.2.0",
+ se.esss.ics.jmasar.model;bundle-version="1.0.3"
 Export-Package: org.csstudio.saverestore.ui.browser

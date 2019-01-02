@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         point="org.csstudio.saverestore.dataprovider">
+      <dataprovider
+            dataprovider="org.csstudio.saverestore.jmasar.JMasarDataProvider"
+            description="Data provider using the JMasar service for snapshot management"
+            id="org.csstudio.saverestore.jmasar.dataprovider"
+            name="JMasar">
+      </dataprovider>
+   </extension>
+   <extension
+         point="org.eclipse.ui.preferencePages">
+      <page
+            category="org.csstudio.saverestore.preferencespage"
+            class="org.csstudio.saverestore.jmasar.PreferencesPage"
+            id="org.csstudio.saverestore.jmasar.preferencespage"
+            name="JMasar">
+      </page>
+   </extension>
+</plugin>

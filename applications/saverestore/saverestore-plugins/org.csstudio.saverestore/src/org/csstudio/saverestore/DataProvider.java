@@ -10,15 +10,17 @@
  */
 package org.csstudio.saverestore;
 
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
 import org.csstudio.saverestore.data.BaseLevel;
+import org.csstudio.saverestore.data.Branch;
 import org.csstudio.saverestore.data.SaveSet;
 import org.csstudio.saverestore.data.SaveSetData;
-import org.csstudio.saverestore.data.Branch;
 import org.csstudio.saverestore.data.Snapshot;
+import org.csstudio.saverestore.data.TreeViewNode;
 import org.csstudio.saverestore.data.VSnapshot;
 
 /**
@@ -396,4 +398,27 @@ public interface DataProvider {
      * @return supported search criteria
      */
     List<SearchCriterion> getSupportedSearchCriteria();
+    
+    /**
+     * If the {@link DataProvider} implementation provides data using a tree abstraction,
+     * this method should return <code>true</code>, e.g. if the data is organized in
+     * folders and objects mimicking a file system structure.
+     * @return
+     */
+    default public boolean mimicksFileSystemStructure() {
+    	return false;
+    }
+    
+    /**
+     * A {@link DataProvider} providing data using a tree abstraction must return
+     * a {@link TreeViewNode} object representing the root of the tree. 
+     * @return
+     */
+    default public TreeViewNode getTreeRootNode() {
+    	return null;
+    }
+    
+    default public List<TreeViewNode> getChildNodes(TreeViewNode treeViewNode){
+    	return Collections.emptyList();
+    }
 }
