@@ -39,6 +39,7 @@ public class VSnapshot implements VType, Time, Array, Serializable {
     private final Snapshot snapshot;
     private String forcedName;
     private boolean dirty;
+    private String snapshotId;
 
     /**
      * Constructs a new data object from the {@link VTable}. The table is expected to have 3 columns: pv names, selected
@@ -350,7 +351,15 @@ public class VSnapshot implements VType, Time, Array, Serializable {
         this.dirty = false;
     }
 
-    /*
+    public String getSnapshotId() {
+		return snapshotId;
+	}
+
+	public void setSnapshotId(String snapshotId) {
+		this.snapshotId = snapshotId;
+	}
+
+	/*
      * (non-Javadoc)
      *
      * @see java.lang.Object#toString()

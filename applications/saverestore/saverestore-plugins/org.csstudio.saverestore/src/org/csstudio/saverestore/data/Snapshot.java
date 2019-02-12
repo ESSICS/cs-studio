@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+import org.csstudio.saverestore.DataProvider;
 import org.csstudio.saverestore.Utilities;
 
 /**
@@ -47,6 +48,11 @@ public class Snapshot implements Comparable<Snapshot>, Serializable {
     private final String tagMessage;
     private final Map<String, String> parameters;
     private final List<String> publicParameters;
+    
+    /**
+     * An id that should be unique among all {@link Snapshot}s for the current {@link DataProvider}.
+     */
+    private String snapshotId;
 
     /**
      * Constructs a new snapshot, which belongs to the specific set. Snapshot that is read from the central storage,
@@ -302,4 +308,14 @@ public class Snapshot implements Comparable<Snapshot>, Serializable {
     public String toString() {
         return toString;
     }
+
+	public String getSnapshotId() {
+		return snapshotId;
+	}
+
+	public void setSnapshotId(String snapshotId) {
+		this.snapshotId = snapshotId;
+	}
+    
+    
 }

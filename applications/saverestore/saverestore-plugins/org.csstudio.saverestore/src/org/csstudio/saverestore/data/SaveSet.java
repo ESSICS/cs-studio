@@ -13,6 +13,7 @@ package org.csstudio.saverestore.data;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -39,6 +40,9 @@ public class SaveSet implements Comparable<SaveSet>, Serializable {
     private String displayName;
     private final Map<String, String> parameters;
     private final String dataProviderId;
+    private String saveSetId;
+    private Date lastModified;
+    private String userName;
 
     /**
      * Constructs a new empty save set.
@@ -208,8 +212,36 @@ public class SaveSet implements Comparable<SaveSet>, Serializable {
         }
         return fullyQualifiedName;
     }
+    
+    public String getSaveSetId() {
+    	return saveSetId;
+    }
+    
+    public void setSaveSetId(String saveSetId) {
+    	this.saveSetId = saveSetId;
+    }
+    
+    public void setFullyQualifiedName(String fullyQualifiedName) {
+    	this.fullyQualifiedName = fullyQualifiedName;
+    }
 
-    /*
+    public Date getLastModified() {
+		return lastModified;
+	}
+
+	public void setLastModified(Date lastModified) {
+		this.lastModified = lastModified;
+	}
+
+	public String getUserName() {
+		return userName;
+	}
+
+	public void setUserName(String userName) {
+		this.userName = userName;
+	}
+
+	/*
      * (non-Javadoc)
      *
      * @see java.lang.Object#toString()

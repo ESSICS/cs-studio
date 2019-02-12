@@ -16,71 +16,36 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-package org.csstudio.saverestore.data;
+package org.csstudio.saverestore.data.tree;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class TreeViewNode {
+/**
+ * @author georgweiss
+ * Created 3 Jan 2019
+ */
+public class FolderTreeNode extends TreeNode{
 
-	private int id;
-	private TreeViewNode parent;
-	private List<TreeViewNode> children;
-	private String name;
-	private boolean isLeaf;
-	
-	public TreeViewNode(String name) {
-		this.name = name;
-	}
-	
-	public TreeViewNode getParent() {
-		return parent;
+	private List<TreeNode> children;
+
+	public FolderTreeNode(int id, String name, TreeNodeType type) {
+		super(id, name, type);
 	}
 
-	public void setParent(TreeViewNode parent) {
-		this.parent = parent;
-	}
-
-	public List<TreeViewNode> getChildren() {
+	public List<TreeNode> getChildren() {
 		if(children == null) {
 			children = new ArrayList<>();
 		}
 		return children;
 	}
 
-	public void setChildren(List<TreeViewNode> children) {
+	public void setChildren(List<TreeNode> children) {
 		this.children = children;
 	}
 
-	public boolean isLeaf() {
-		return isLeaf;
-	}
-
-	public String getName() {
-		return name;
-	}
-
-	public void setName(String name) {
-		this.name = name;
-	}
-	
-
-	
-
-	public void setLeaf(boolean isLeaf) {
-		this.isLeaf = isLeaf;
-	}
-
-	public int getId() {
-		return id;
-	}
-
-	public void setId(int id) {
-		this.id = id;
-	}
-
 	@Override
-	public String toString() {
-		return name;
+	public boolean isLeaf() {
+		return false;
 	}
 }

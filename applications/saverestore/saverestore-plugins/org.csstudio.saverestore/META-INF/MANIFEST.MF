@@ -13,5 +13,6 @@ Require-Bundle: org.diirt.vtype;bundle-version="3.0.1",
  org.eclipse.core.resources;bundle-version="3.10.1",
  org.csstudio.ui.fx.util;bundle-version="1.0.0"
 Export-Package: org.csstudio.saverestore,
- org.csstudio.saverestore.data
+ org.csstudio.saverestore.data,
+ org.csstudio.saverestore.data.tree
 Bundle-ActivationPolicy: lazy

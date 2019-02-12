@@ -21,8 +21,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BooleanSupplier;
-import java.util.stream.Collectors;
 
+import org.csstudio.saverestore.BrowserPresentationType;
 import org.csstudio.saverestore.DataProvider;
 import org.csstudio.saverestore.DataProviderWrapper;
 import org.csstudio.saverestore.SaveRestoreService;
@@ -30,7 +30,8 @@ import org.csstudio.saverestore.data.BaseLevel;
 import org.csstudio.saverestore.data.Branch;
 import org.csstudio.saverestore.data.SaveSet;
 import org.csstudio.saverestore.data.Snapshot;
-import org.csstudio.saverestore.data.TreeViewNode;
+import org.csstudio.saverestore.data.tree.TreeNode;
+import org.csstudio.saverestore.data.tree.TreeNodeType;
 import org.csstudio.saverestore.ui.Activator;
 import org.csstudio.saverestore.ui.Selector;
 import org.csstudio.saverestore.ui.util.SnapshotDataFormat;
@@ -40,6 +41,8 @@ import org.csstudio.ui.fx.util.UnfocusableButton;
 import org.csstudio.ui.fx.util.UnfocusableToggleButton;
 import org.eclipse.fx.ui.workbench3.FXViewPart;
 import org.eclipse.jface.action.Action;
+import org.eclipse.jface.action.IMenuListener;
+import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.dialogs.IDialogSettings;
 import org.eclipse.jface.viewers.ISelection;
@@ -56,9 +59,6 @@ import org.eclipse.ui.PlatformUI;
 
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
-import javafx.event.EventHandler;
-import javafx.event.EventType;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.VPos;
@@ -66,22 +66,18 @@ import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ContentDisplay;
-import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
-import javafx.scene.control.MenuItem;
 import javafx.scene.control.TitledPane;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.Tooltip;
 import javafx.scene.control.TreeItem;
-import javafx.scene.control.TreeItem.TreeModificationEvent;
 import javafx.scene.control.TreeView;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.Dragboard;
-import javafx.scene.input.MouseButton;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
@@ -105,7 +101,8 @@ public class BrowserView extends FXViewPart implements ISelectionProvider, IShel
 	private static final String SETTINGS_DEFAULT_BASE_LEVEL_BROWSER = "defaultBaseLevelBrowser";
 	private static final String SETTINGS_BASE_LEVEL_FILTER_NOT_SELECTED = "baseLevelFilterNotSelected";
 
-	private static final Image SAVE_SET_IMAGE = new Image(BrowserView.class.getResourceAsStream("/icons/txt.png"));
+	public static final Image SAVE_SET_IMAGE = new Image(BrowserView.class.getResourceAsStream("/icons/txt.png"));
+	public static final Image SNAPSHOT_IMAGE = new Image(BrowserView.class.getResourceAsStream("/icons/ksnapshot.png"));
 
 	private static class SaveSetWrapper {
 
@@ -143,26 +140,11 @@ public class BrowserView extends FXViewPart implements ISelectionProvider, IShel
 		}
 	}
 
-//	private static class NodeTreeItem extends TreeItem<TreeViewNode> {
-//
-//		TreeViewNode treeViewNode;
-//
-//		NodeTreeItem(TreeViewNode treeViewNode) {
-//			super(treeViewNode, treeViewNode.isLeaf() ? new ImageView(SAVE_SET_IMAGE) : null);
-//			this.treeViewNode = treeViewNode;
-//		}
-//
-//		@Override
-//		public boolean isLeaf() {
-//			return treeViewNode.isLeaf();
-//		}
-//	}
-
 	private DefaultBaseLevelBrowser defaultBaseLevelBrowser;
 	private BaseLevelBrowser<BaseLevel> baseLevelBrowser;
 	private TreeView<SaveSetWrapper> saveSetsTree;
 	private ListView<Snapshot> snapshotsList;
-	private TreeView<TreeViewNode> treeView;
+	private TreeViewBrowser treeView;
 	private TitledPane snapshotsPane;
 	private TitledPane baseLevelPane;
 	private TitledPane saveSetsPane;
@@ -180,12 +162,19 @@ public class BrowserView extends FXViewPart implements ISelectionProvider, IShel
 
 	private Menu contextMenu;
 	private Action deleteTagAction;
+	private Action deleteSaveSetAction;
+	private Action editSaveSetAction;
 
 	private final List<ISelectionChangedListener> selectionChangedListener = new CopyOnWriteArrayList<>();
 
 	private PropertyChangeListener dpl = e -> Platform.runLater(() -> updateForDataProviderChange());
 
 	private Scene scene;
+	private boolean inSnapshotPane = false;
+	private boolean inSaveSetsPane = false;
+	private boolean inTreeViewBrowser = false;
+
+	private MenuManager menu;
 
 	/**
 	 * @return the selector bound to this view
@@ -228,26 +217,19 @@ public class BrowserView extends FXViewPart implements ISelectionProvider, IShel
 	@Override
 	public void createPartControl(Composite parent) {
 		super.createPartControl(parent);
-		MenuManager menu = new MenuManager();
-		deleteTagAction = new Action("Remove Tag") {
-			@Override
-			public void run() {
-				DataProviderWrapper wrapper = SaveRestoreService.getInstance().getSelectedDataProvider();
-				if (canExecute("Tag Snapshot", wrapper.getName() + " data provider does not support tagging.",
-						wrapper.getProvider()::isTaggingSupported)) {
-					Snapshot item = snapshotsList.getSelectionModel().getSelectedItem();
-					if (FXMessageDialog.openQuestion(getSite().getShell(), "Remove Tag",
-							"Are you sure you want to remove the tag '" + item.getTagName().get() + "' from snapshot '"
-									+ item.getDate() + "'?")) {
-						actionManager.deleteTag(item);
-					}
-				}
-			}
-		};
-		menu.add(deleteTagAction);
+
+		menu = new MenuManager();
+		deleteTagAction = new DeleteTagAction();
+		deleteSaveSetAction = new DeleteSaveSetAction();
+		editSaveSetAction = new EditSaveSetAction();
+
+		menu.addMenuListener(new ContextMenuListener());
+
 		contextMenu = menu.createContextMenu(parent);
 		parent.setMenu(contextMenu);
+
 		getSite().registerContextMenu(menu, this);
+
 		PlatformUI.getWorkbench().getHelpSystem().setHelp(parent, "org.csstudio.saverestore.ui.help.browser");
 	}
 
@@ -262,19 +244,21 @@ public class BrowserView extends FXViewPart implements ISelectionProvider, IShel
 		ensureCurrentDataProvider();
 
 		BorderPane main = new BorderPane();
+
 		scene = new Scene(main);
+
 		mainPane = new VBox();
 
 		createUI();
 
 		main.setCenter(mainPane);
-
 		SaveRestoreService.getInstance().addPropertyChangeListener(SaveRestoreService.SELECTED_DATA_PROVIDER, dpl);
 
 		return scene;
 	}
 
 	private void createUI() {
+
 		mainPane.getChildren().clear();
 
 		createCommonUIElements();
@@ -290,17 +274,19 @@ public class BrowserView extends FXViewPart implements ISelectionProvider, IShel
 		if (snapshotsVBoxPane == null) {
 			snapshotsVBoxPane = new VBox();
 			Node snapshots = createSnapshotsPane(scene);
+
 			VBox.setVgrow(snapshots, Priority.ALWAYS);
 			snapshotsVBoxPane.getChildren().addAll(snapshotsPane);
 			VBox.setVgrow(snapshotsVBoxPane, Priority.ALWAYS);
-			snapshotsPane.setExpanded(true);
 		}
 	}
 
 	private void createDataProviderSpecificUIElements() {
-		if (!SaveRestoreService.getInstance().getSelectedDataProvider().getProvider().mimicksFileSystemStructure()) {
+		if (SaveRestoreService.getInstance().getSelectedDataProvider().getProvider()
+				.preferredBrowserRepresentationType().equals(BrowserPresentationType.MULTIPLE_PANES)) {
 			createBaseLevelBrowserUIElements();
-		} else {
+		} else if (SaveRestoreService.getInstance().getSelectedDataProvider().getProvider()
+				.preferredBrowserRepresentationType().equals(BrowserPresentationType.TREE_ONLY)) {
 			createTreeViewBrowserUIElements();
 		}
 	}
@@ -328,35 +314,7 @@ public class BrowserView extends FXViewPart implements ISelectionProvider, IShel
 		if (treeViewVBoxPane == null) {
 			treeViewVBoxPane = new VBox();
 
-			treeView = new TreeView<>();
-
-			TreeViewNode root = SaveRestoreService.getInstance().getSelectedDataProvider().getProvider()
-					.getTreeRootNode();
-
-			//TreeItemWrapper wrapper = new TreeItemWrapper(root);
-
-			TreeItem<TreeViewNode> rootItem = new TreeItem<TreeViewNode>(root);
-
-			for (TreeViewNode childNode : root.getChildren()) {
-				rootItem.getChildren().add(new TreeItem<TreeViewNode>(childNode));
-			}
-
-			rootItem.setExpanded(true);
-			rootItem.addEventHandler(TreeItem.branchExpandedEvent(), new EventHandler<TreeItem.TreeModificationEvent<TreeViewNode>>() {
-				@Override
-				public void handle(TreeModificationEvent<TreeViewNode> event) {
-					
-					DataProvider dataProvider =
-							SaveRestoreService.getInstance().getSelectedDataProvider().getProvider();
-					
-					TreeItem<TreeViewNode> targetItem = event.getTreeItem();
-						List<TreeItem<TreeViewNode>> childItems = 
-							dataProvider.getChildNodes(targetItem.getValue()).stream()
-							.map(i -> new TreeItem<TreeViewNode>(i)).collect(Collectors.toList());
-					targetItem.getChildren().addAll(childItems);
-				}
-			});
-			treeView.setRoot(rootItem);
+			treeView = new TreeViewBrowser(actionManager);
 
 			setGridConstraints(treeView, true, true, Priority.ALWAYS, Priority.ALWAYS);
 
@@ -364,8 +322,18 @@ public class BrowserView extends FXViewPart implements ISelectionProvider, IShel
 			treeViewVBoxPane.getChildren().add(treeView);
 			VBox.setVgrow(treeViewVBoxPane, Priority.ALWAYS);
 
+			treeViewVBoxPane.setOnMouseEntered(me -> {
+				inTreeViewBrowser = true;
+			});
+
+			treeViewVBoxPane.setOnMouseExited(me -> {
+				inTreeViewBrowser = false;
+			});
+
 		}
-		mainPane.getChildren().addAll(treeViewVBoxPane, snapshotsVBoxPane);
+
+		mainPane.getChildren().addAll(treeViewVBoxPane);
+		treeView.loadInitialTreeData();
 	}
 
 	private TitledPane createBaseLevelsPane(BaseLevelBrowser<BaseLevel> browser) {
@@ -449,34 +417,6 @@ public class BrowserView extends FXViewPart implements ISelectionProvider, IShel
 		});
 		saveSetsTree.setShowRoot(false);
 
-		final ContextMenu popup = new ContextMenu();
-		MenuItem deleteSetItem = new MenuItem("Delete...");
-		deleteSetItem.setOnAction(e -> {
-			popup.hide();
-			DataProviderWrapper wrapper = SaveRestoreService.getInstance().getSelectedDataProvider();
-			if (canExecute("Delete Save Set",
-					wrapper.getName() + " data provider does not support deleting of save sets.",
-					wrapper.getProvider()::isSaveSetSavingSupported)) {
-
-				SaveSetTreeItem item = (SaveSetTreeItem) saveSetsTree.getSelectionModel().getSelectedItem();
-				if (FXMessageDialog.openQuestion(getSite().getShell(), "Delete Save Set",
-						"Are you sure you want to delete save set '" + item.getValue().set.getPathAsString() + "'?")) {
-					actionManager.deleteSaveSet(item.getValue().set);
-				}
-			}
-		});
-		popup.getItems().add(deleteSetItem);
-		saveSetsTree.setContextMenu(popup);
-		saveSetsTree.setOnMouseReleased(e -> {
-			if (e.getButton() == MouseButton.SECONDARY) {
-				SaveSetTreeItem item = (SaveSetTreeItem) saveSetsTree.getSelectionModel().getSelectedItem();
-				if (item.getValue().set == null) {
-					popup.hide();
-				} else {
-					popup.show(saveSetsTree, e.getScreenX(), e.getScreenY());
-				}
-			}
-		});
 		setGridConstraints(saveSetsTree, true, true, Priority.ALWAYS, Priority.ALWAYS);
 		content.add(saveSetsTree, 0, 0);
 
@@ -542,6 +482,15 @@ public class BrowserView extends FXViewPart implements ISelectionProvider, IShel
 
 		saveSetsPane.expandedProperty()
 				.addListener((a, o, n) -> VBox.setVgrow(saveSetsPane, n ? Priority.ALWAYS : Priority.NEVER));
+
+		saveSetsPane.setOnMouseEntered(me -> {
+			inSaveSetsPane = true;
+		});
+
+		saveSetsPane.setOnMouseExited(me -> {
+			inSaveSetsPane = false;
+		});
+
 		return saveSetsPane;
 	}
 
@@ -614,11 +563,7 @@ public class BrowserView extends FXViewPart implements ISelectionProvider, IShel
 			db.setContent(cc);
 			e.consume();
 		});
-		snapshotsList.setOnMouseReleased(e -> {
-			Snapshot snapshot = snapshotsList.getSelectionModel().getSelectedItem();
-			deleteTagAction.setEnabled(snapshot != null && snapshot.getTagName().isPresent());
-			contextMenu.setVisible(e.getButton() == MouseButton.SECONDARY);
-		});
+
 		snapshotsList.setOnMouseClicked(e -> {
 			Snapshot snapshot = snapshotsList.getSelectionModel().getSelectedItem();
 			if (e.getClickCount() == 2 && snapshot != null) {
@@ -629,6 +574,7 @@ public class BrowserView extends FXViewPart implements ISelectionProvider, IShel
 			final SelectionChangedEvent e = new SelectionChangedEvent(BrowserView.this, getSelection());
 			selectionChangedListener.forEach(l -> l.selectionChanged(e));
 		});
+
 		content.setCenter(snapshotsList);
 		snapshotsPane = new TitledPane("Snapshots", content);
 		snapshotsPane.setMaxHeight(Double.MAX_VALUE);
@@ -682,6 +628,15 @@ public class BrowserView extends FXViewPart implements ISelectionProvider, IShel
 		titleBox.prefWidthProperty().bind(scene.widthProperty().subtract(34));
 		snapshotsPane.expandedProperty()
 				.addListener((a, o, n) -> VBox.setVgrow(snapshotsPane, n ? Priority.ALWAYS : Priority.NEVER));
+
+		snapshotsPane.setOnMouseEntered(me -> {
+			inSnapshotPane = true;
+		});
+
+		snapshotsPane.setOnMouseExited(me -> {
+			inSnapshotPane = false;
+		});
+
 		return snapshotsPane;
 	}
 
@@ -947,10 +902,13 @@ public class BrowserView extends FXViewPart implements ISelectionProvider, IShel
 	 */
 	@Override
 	public ISelection getSelection() {
+		if (!inSnapshotPane) {
+			return new LazySnapshotStructuredSelection(null, null);
+		}
 		Snapshot selectedSnapshot = snapshotsList.selectionModelProperty().get().getSelectedItem();
 		return selectedSnapshot == null ? new LazySnapshotStructuredSelection(null, null)
-				: new LazySnapshotStructuredSelection(selectedSnapshot, SaveRestoreService.getInstance()
-						.getDataProvider(selectedSnapshot.getSaveSet().getDataProviderId()).getProvider());
+				: new LazySnapshotStructuredSelection(selectedSnapshot,
+						SaveRestoreService.getInstance().getSelectedDataProvider().getProvider());
 	}
 
 	/*
@@ -982,16 +940,127 @@ public class BrowserView extends FXViewPart implements ISelectionProvider, IShel
 
 			IDialogSettings settings = Activator.getDefault().getDialogSettings();
 			String selectedDataProvider = settings.get(SETTINGS_SELECTED_DATA_PROVIDER);
-			if (selectedDataProvider == null) {
+			if (selectedDataProvider == null) { // No data provider found in preferences
 				saveRestoreService.setSelectedDataProvider(dataProviderWrappers.get(0));
 			}
+
+			// Set the data provider defined in the preferences
 			for (DataProviderWrapper wrapper : dataProviderWrappers) {
 				if (wrapper.getId().equals(selectedDataProvider)) {
 					saveRestoreService.setSelectedDataProvider(wrapper);
 					return;
 				}
 			}
-			saveRestoreService.setSelectedDataProvider(dataProviderWrappers.get(0));
+		}
+	}
+
+	/**
+	 * Implements a {@link IMenuListener} in order to provide logic to add/remove
+	 * and enable/disable context menu items depending of the current UI context.
+	 * 
+	 * @author georgweiss Created 15 Jan 2019
+	 */
+	private class ContextMenuListener implements IMenuListener {
+
+		@Override
+		public void menuAboutToShow(IMenuManager menuManager) {
+
+			// First remove all items in the context menu...
+			menu.removeAll();
+
+			// ...then determine what to add and optionally enable
+			if (inSnapshotPane) {
+				menu.add(deleteTagAction);
+				Snapshot snapshot = (Snapshot) snapshotsList.getSelectionModel().getSelectedItem();
+				deleteTagAction.setEnabled(snapshot != null && snapshot.getTagName().isPresent());
+			}
+
+			if (inSaveSetsPane) {
+				menu.add(deleteSaveSetAction);
+				SaveSetTreeItem item = (SaveSetTreeItem) saveSetsTree.getSelectionModel().getSelectedItem();
+				deleteSaveSetAction.setEnabled(item != null && item.getValue() != null && item.getValue().set != null);
+			}
+
+			if (inTreeViewBrowser) {
+				menu.add(deleteSaveSetAction);
+				deleteSaveSetAction.setEnabled(treeView.getSelectedTreeNodeType() != null
+						&& treeView.getSelectedTreeNodeType().equals(TreeNodeType.SAVESET));
+				menu.add(editSaveSetAction);
+				editSaveSetAction.setEnabled(treeView.getSelectedTreeNodeType() != null
+						&& treeView.getSelectedTreeNodeType().equals(TreeNodeType.SAVESET));
+			}
+		}
+	}
+
+	private class DeleteSaveSetAction extends Action {
+
+		public DeleteSaveSetAction() {
+			super("Delete Save Set");
+		}
+
+		@Override
+		public void run() {
+
+			DataProviderWrapper wrapper = SaveRestoreService.getInstance().getSelectedDataProvider();
+			if (canExecute("Delete Save Set",
+					wrapper.getName() + " data provider does not support deleting of save sets.",
+					wrapper.getProvider()::isSaveSetSavingSupported)) {
+				if (inSaveSetsPane) {
+					SaveSetTreeItem item = (SaveSetTreeItem) saveSetsTree.getSelectionModel().getSelectedItem();
+					if (FXMessageDialog.openQuestion(getSite().getShell(), "Delete Save Set",
+							"Are you sure you want to delete save set '" + item.getValue().set.getPathAsString()
+									+ "'?")) {
+						actionManager.deleteSaveSet(item.getValue().set);
+					}
+				}
+				else if(inTreeViewBrowser) {
+					
+				}
+			}
+		}
+	}
+
+	private class DeleteTagAction extends Action {
+
+		public DeleteTagAction() {
+			super("Remove Tag");
+		}
+
+		@Override
+		public void run() {
+			DataProviderWrapper wrapper = SaveRestoreService.getInstance().getSelectedDataProvider();
+			if (canExecute("Tag Snapshot", wrapper.getName() + " data provider does not support tagging.",
+					wrapper.getProvider()::isTaggingSupported)) {
+				Snapshot item = snapshotsList.getSelectionModel().getSelectedItem();
+				if (FXMessageDialog.openQuestion(getSite().getShell(), "Remove Tag",
+						"Are you sure you want to remove the tag '" + item.getTagName().get() + "' from snapshot '"
+								+ item.getDate() + "'?")) {
+					actionManager.deleteTag(item);
+				}
+			}
+		}
+	}
+
+	private class EditSaveSetAction extends Action {
+
+		public EditSaveSetAction() {
+			super("Edit Save Set");
+		}
+
+		@Override
+		public void run() {
+			DataProviderWrapper wrapper = SaveRestoreService.getInstance().getSelectedDataProvider();
+			if (canExecute("Edit Save Set", wrapper.getName() + " data provider does not support editing of save sets.",
+					wrapper.getProvider()::isSaveSetSavingSupported)) {
+				TreeItem<TreeNode> item = treeView.getSelectionModel().getSelectedItem();
+				SaveSet saveSet = new SaveSet(new Branch(), Optional.empty(),
+						new String[] { item.getValue().getName() },
+						SaveRestoreService.getInstance().getSelectedDataProvider().getId());
+				saveSet.setSaveSetId(Integer.toString(item.getValue().getId()));
+				saveSet.setFullyQualifiedName("/config/" + item.getValue().getId());
+				saveSet.setUserName(item.getValue().getUserName());
+				actionManager.editSaveSet(saveSet);
+			}
 		}
 	}
 }

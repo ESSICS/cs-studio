@@ -20,6 +20,8 @@ package org.csstudio.saverestore.jmasar;
 
 import java.util.List;
 
+import org.csstudio.saverestore.data.tree.FolderTreeNode;
+
 import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
@@ -27,6 +29,7 @@ import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.api.client.config.DefaultClientConfig;
 
+import se.esss.ics.masar.model.Config;
 import se.esss.ics.masar.model.Folder;
 import se.esss.ics.masar.model.Node;
 import se.esss.ics.masar.model.Snapshot;
@@ -38,11 +41,14 @@ public class JMasarClient {
 
 	public JMasarClient() {
 
-		jmasarServiceUrl = Activator.getInstance().getJMasarServiceUrl();
 		DefaultClientConfig defaultClientConfig = new DefaultClientConfig();
 		defaultClientConfig.getClasses().add(JacksonJsonProvider.class);
 		client = Client.create(defaultClientConfig);
 		
+	}
+	
+	public void setJMasarServiceUrl(String jmasarServiceUrl) {
+		this.jmasarServiceUrl = jmasarServiceUrl;
 	}
 
 	public List<Node> getFoldersInRoot() {
@@ -85,8 +91,8 @@ public class JMasarClient {
 		return folder.getChildNodes();
 	}
 	
-	public List<Snapshot> getSnapshots(int id){
-		WebResource webResource = client.resource(jmasarServiceUrl + "/config/" + id + "/snapshots");
+	public List<Snapshot> getSnapshots(FolderTreeNode treeNode){
+		WebResource webResource = client.resource(jmasarServiceUrl + "/config/" + treeNode.getId()+ "/snapshots");
 		
 		ClientResponse response = webResource.accept("application/json; charset=UTF-8").get(ClientResponse.class);
 		
@@ -95,5 +101,69 @@ public class JMasarClient {
 		}
 		
 		return response.getEntity(new GenericType<List<Snapshot>>(){});
+	}
+	
+	public Snapshot getSnapshot(int id) {
+		WebResource webResource = client.resource(jmasarServiceUrl + "/snapshot/" + id);
+		
+		ClientResponse response = webResource.accept("application/json; charset=UTF-8").get(ClientResponse.class);
+		
+		if (response.getStatus() != 200) {
+			throw new RuntimeException("Failed : HTTP error code : " + response.getStatus());
+		}
+		
+		return response.getEntity(Snapshot.class);
+	}
+	
+	public Config getConfiguration(int id) {
+		WebResource webResource = client.resource(jmasarServiceUrl + "/config/" + id);
+		
+		ClientResponse response = webResource.accept("application/json; charset=UTF-8").get(ClientResponse.class);
+		
+		if (response.getStatus() != 200) {
+			throw new RuntimeException("Failed : HTTP error code : " + response.getStatus());
+		}
+		
+		return response.getEntity(Config.class);
+	}
+	
+	public Config saveConfig(Config config) {
+		WebResource webResource = client.resource(jmasarServiceUrl + "/config");
+		
+		
+		ClientResponse response = webResource.accept("application/json; charset=UTF-8")
+				.entity(config, "application/json; charset=UTF-8")
+				.post(ClientResponse.class);
+		
+		if (response.getStatus() != 200) {
+			throw new RuntimeException("Failed : HTTP error code : " + response.getStatus());
+		}
+		
+		return response.getEntity(Config.class);
+	}
+	
+	public Snapshot takeSnapshot(String configId) {
+		WebResource webResource = client.resource(jmasarServiceUrl + "/snapshot/" + configId);
+		
+		ClientResponse response = webResource.accept("application/json; charset=UTF-8").put(ClientResponse.class);
+		if (response.getStatus() != 200) {
+			throw new RuntimeException("Failed : HTTP error code : " + response.getStatus());
+		}
+		
+		return response.getEntity(Snapshot.class);
+	}
+	
+	public void commitSnapshot(String snapshotId, String snapshotName, String userName, String comment) {
+		WebResource webResource = client.resource(jmasarServiceUrl + "/snapshot/" + snapshotId)
+				.queryParam("userName", userName)
+				.queryParam("snapshotName", snapshotName)
+				.queryParam("comment", comment);
+		
+		
+		ClientResponse response = webResource.post(ClientResponse.class);
+		
+		if (response.getStatus() != 200) {
+			throw new RuntimeException("Failed : HTTP error code : " + response.getStatus());
+		}
 	}
 }

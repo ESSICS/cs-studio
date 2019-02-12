@@ -21,6 +21,7 @@ public class SaveSetEntry implements Serializable {
     private final String readback;
     private final String delta;
     private final boolean readOnly;
+    private EpicsProvider epicsProvider = EpicsProvider.CA;
 
     /**
      * Constructs a new entry from the pv name and default values (empty readback and delta, writable PV).
@@ -47,6 +48,28 @@ public class SaveSetEntry implements Serializable {
         this.readback = readback == null ? "" : readback;
         this.delta = delta == null ? "" : delta;
         this.readOnly = readOnly;
+    }
+    
+    /**
+     * Constructs a new entry.
+     *
+     * @param pvName the pv name
+     * @param readback the readback pv name
+     * @param delta the delta string
+     * @param readOnly true if read only and false if read write
+     */
+    public SaveSetEntry(String pvName, String readback, String delta, boolean readOnly, EpicsProvider epicsProvider) {
+        this(pvName, readback, delta, readOnly);
+        this.epicsProvider = epicsProvider;
+    }
+    
+    /**
+     * 
+     * @return The Epics provider type associated with the process variable, see {@link EpicsProvider}.
+     * If not set, it defaults to {@link EpicsProvider#CA} (i.e. Channel Access).
+     */
+    public EpicsProvider getEpicsProvider() {
+    	return epicsProvider;
     }
 
     /**

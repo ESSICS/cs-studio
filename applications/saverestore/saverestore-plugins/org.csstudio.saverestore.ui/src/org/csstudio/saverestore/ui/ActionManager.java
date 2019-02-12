@@ -85,8 +85,7 @@ public class ActionManager {
         if (descriptor == null) {
             throw new IllegalArgumentException("Snapshot not provided.");
         }
-        final DataProvider provider = SaveRestoreService.getInstance()
-            .getDataProvider(descriptor.getSaveSet().getDataProviderId()).getProvider();
+        final DataProvider provider = SaveRestoreService.getInstance().getSelectedDataProvider().getProvider();
         try {
             return Optional.ofNullable(provider.getSnapshotContent(descriptor));
         } catch (DataProviderException e) {

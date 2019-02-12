@@ -88,7 +88,6 @@ public class SaveSetEditor extends FXEditorPart implements IShellProvider {
     private TextArea descriptionArea;
     private SaveSetEditorTable contentTable;
     private Menu contextMenu;
-
     private boolean dirty;
     private final SaveSetController controller;
 
@@ -111,7 +110,7 @@ public class SaveSetEditor extends FXEditorPart implements IShellProvider {
         super.createPartControl(parent);
 
         MenuManager menu = new MenuManager();
-        final Action openChartTableAction = new Action("Add Pv's") {
+        final Action openChartTableAction = new Action("Add PVs") {
             @Override
             public void run() {
                 // Launch a dialog with the previous text field and format
@@ -125,7 +124,7 @@ public class SaveSetEditor extends FXEditorPart implements IShellProvider {
         };
         menu.add(openChartTableAction);
         openChartTableAction.setEnabled(true);
-        final Action removePV = new Action("Remove Pv's") {
+        final Action removePV = new Action("Remove PVs") {
             @Override
             public void run() {
                 ISelection selection = contentTable.getSelection();
@@ -430,12 +429,12 @@ public class SaveSetEditor extends FXEditorPart implements IShellProvider {
                 }
             }
         });
-
+        
         setGridConstraints(descriptionLabel, true, true, HPos.LEFT, VPos.CENTER, Priority.NEVER, Priority.NEVER);
         setGridConstraints(contentLabel, true, true, HPos.LEFT, VPos.CENTER, Priority.NEVER, Priority.NEVER);
         setGridConstraints(descriptionArea, true, true, HPos.LEFT, VPos.CENTER, Priority.ALWAYS, Priority.NEVER);
         setGridConstraints(contentTable, true, true, HPos.LEFT, VPos.CENTER, Priority.ALWAYS, Priority.ALWAYS);
-
+      
         grid.add(descriptionLabel, 0, 0);
         grid.add(descriptionArea, 0, 1);
         grid.add(contentLabel, 0, 2);

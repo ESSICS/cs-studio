@@ -20,8 +20,9 @@ import org.csstudio.saverestore.data.Branch;
 import org.csstudio.saverestore.data.SaveSet;
 import org.csstudio.saverestore.data.SaveSetData;
 import org.csstudio.saverestore.data.Snapshot;
-import org.csstudio.saverestore.data.TreeViewNode;
 import org.csstudio.saverestore.data.VSnapshot;
+import org.csstudio.saverestore.data.tree.FolderTreeNode;
+import org.csstudio.saverestore.data.tree.TreeNode;
 
 /**
  *
@@ -400,25 +401,36 @@ public interface DataProvider {
     List<SearchCriterion> getSupportedSearchCriteria();
     
     /**
-     * If the {@link DataProvider} implementation provides data using a tree abstraction,
-     * this method should return <code>true</code>, e.g. if the data is organized in
-     * folders and objects mimicking a file system structure.
-     * @return
+     * Defines how data in the save sets and snapshot browser is to be presented.
+     * @return a {@link BrowserPresentationType}, defaults to {@link BrowserPresentationType#MULTIPLE_PANES}.
      */
-    default public boolean mimicksFileSystemStructure() {
-    	return false;
+    default public BrowserPresentationType preferredBrowserRepresentationType() {
+    	return BrowserPresentationType.MULTIPLE_PANES;
     }
     
     /**
      * A {@link DataProvider} providing data using a tree abstraction must return
-     * a {@link TreeViewNode} object representing the root of the tree. 
+     * a {@link FolderTreeNode} object representing the root of the tree. 
      * @return
      */
-    default public TreeViewNode getTreeRootNode() {
+    default public TreeNode getTreeRootNode() {
     	return null;
     }
     
-    default public List<TreeViewNode> getChildNodes(TreeViewNode treeViewNode){
+    default public List<TreeNode> getChildNodes(FolderTreeNode treeViewNode){
     	return Collections.emptyList();
+    }
+    
+    default public List<TreeNode> getSnapshots(FolderTreeNode configurationNode){
+    	return Collections.emptyList();
+    }
+    
+    /**
+     * 
+     * @return <code>true</code> if a save operation requires a comment to
+     * be specified by the user. Defaults to <code>true</code>.
+     */
+    default public boolean commentOnSaveMandatory() {
+    	return true;
     }
 }

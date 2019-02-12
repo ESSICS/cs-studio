@@ -25,7 +25,8 @@ public class SaveSetData implements Serializable {
     private final List<SaveSetEntry> entries;
     private final String storedComment;
     private final Instant storedDate;
-
+   
+    
     /**
      * Constructs a new save set data object.
      *
@@ -99,8 +100,8 @@ public class SaveSetData implements Serializable {
     public List<SaveSetEntry> getEntries() {
         return entries;
     }
-
-    /*
+    
+	/*
      * (non-Javadoc)
      *
      * @see java.lang.Object#hashCode()

@@ -358,9 +358,9 @@ public class SaveRestoreService {
      */
     public void addPropertyChangeListener(String propertyName, PropertyChangeListener listener) {
         support.addPropertyChangeListener(propertyName, listener);
-        if (SELECTED_DATA_PROVIDER.equals(propertyName) && this.selectedDataProvider != null) {
-            listener.propertyChange(new PropertyChangeEvent(this, propertyName, null, this.selectedDataProvider));
-        }
+//        if (SELECTED_DATA_PROVIDER.equals(propertyName) && this.selectedDataProvider != null) {
+//            listener.propertyChange(new PropertyChangeEvent(this, propertyName, null, this.selectedDataProvider));
+//        }
     }
 
     /**
